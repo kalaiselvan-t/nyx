@@ -1,25 +1,46 @@
-use std::{env, process};
-use std::io::{stdin, stdout, IsTerminal, Write};
 use serde_json::json;
+use std::io::{IsTerminal, Write, stdin, stdout};
+use std::{env, process};
 
 use std::process::ExitCode;
 
+// openrouter/free
+// nvidia/nemotron-3-super-120b-a12b:free
+// nvidia/nemotron-3-ultra-550b-a55b:free
+const DEFAULT_MODEL: &str = "nvidia/nemotron-3-super-120b-a12b:free";
+
+struct Config {
+    api_key: String,
+    model: String,
+}
+
+impl Config {
+    fn from_env() -> Config {
+        let api_key = match env::var("NYX_API_KEY") {
+            Ok(key) => key,
+            Err(_) => {
+                eprintln!(
+                    "Model provider key is not set! Set it with\n export NYX_API_KEY=<key>\n"
+                );
+                process::exit(2)
+            }
+        };
+        let model = env::var("NYX_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string());
+        Config { api_key, model }
+    }
+}
+
 fn main() -> ExitCode {
-    let key = get_key();
+    let config = Config::from_env();
 
     match env::args().nth(1) {
-        Some(prompt) => ask(prompt, key),
-        None => repl(key),
+        Some(prompt) => ask(&prompt, &config),
+        None => repl(&config),
     }
 }
 
 /// Core Functions
-fn call(prompt: String, key: String) -> serde_json::Value {
-
-    // openrouter/free
-    // nvidia/nemotron-3-super-120b-a12b:free
-    // nvidia/nemotron-3-ultra-550b-a55b:free
-    let model: String = "nvidia/nemotron-3-super-120b-a12b:free".to_string();
+fn call(prompt: &str, config: &Config) -> serde_json::Value {
     const SYSTEM_PROMPT: &str = "You are nyx, a Linux command line assistant. You answer like terminal output - concise and precise. \
      Your output is printed raw in a terminal and may be piped to other programs. \
      Rules: \
@@ -27,11 +48,11 @@ fn call(prompt: String, key: String) -> serde_json::Value {
         - No ASCII art, banners or decoration. \
      ";
 
-    let url: String = "https://openrouter.ai/api/v1/chat/completions".to_string();
-    let authorization: String = format!("Bearer {key}");
+    let url: &str = "https://openrouter.ai/api/v1/chat/completions";
+    let authorization: String = format!("Bearer {}", config.api_key);
 
     let data = json!({
-        "model": model,
+        "model": config.model,
         "messages": [
             {
                 "role": "system",
@@ -49,7 +70,8 @@ fn call(prompt: String, key: String) -> serde_json::Value {
         .build()
         .into();
 
-    let request = ureq_agent.post(url)
+    let request = ureq_agent
+        .post(url)
         .header("Authorization", authorization)
         .header("content-type", "application/json");
 
@@ -57,7 +79,7 @@ fn call(prompt: String, key: String) -> serde_json::Value {
     response.body_mut().read_json().unwrap()
 }
 
-fn repl(key: String) -> ExitCode {
+fn repl(config: &Config) -> ExitCode {
     let mut failed = false;
 
     print_terminal_prompt();
@@ -70,19 +92,25 @@ fn repl(key: String) -> ExitCode {
             "" => {}
             "exit" => break,
             _ => {
-                if ask(line.to_string(), key.clone()) != ExitCode::SUCCESS { failed = true;}
+                if ask(line, config) != ExitCode::SUCCESS {
+                    failed = true;
+                }
             }
         }
         print_terminal_prompt();
     }
 
-    if failed { ExitCode::FAILURE } else { ExitCode::SUCCESS }
+    if failed {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
 /// Helper Functions
 
-fn ask(prompt: String, key: String) -> ExitCode {
-    let response: serde_json::Value = call(prompt, key);
+fn ask(prompt: &str, config: &Config) -> ExitCode {
+    let response: serde_json::Value = call(prompt, config);
     match response["choices"][0]["message"]["content"].as_str() {
         Some(text) => {
             println!("{}", text);
@@ -91,16 +119,6 @@ fn ask(prompt: String, key: String) -> ExitCode {
         None => {
             eprintln!("error: unexpected response from agent\n{}", response);
             ExitCode::FAILURE
-        }
-    }
-}
-
-fn get_key() -> String {
-    match std::env::var("KEY") {
-        Ok(key) => key,
-        Err(_) => {
-            eprintln!("Model provider key is not set! Set it with\n export KEY = <key>\n");
-            process::exit(2);
         }
     }
 }
