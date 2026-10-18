@@ -1,5 +1,5 @@
-use std::env;
 use crate::error::NyxError;
+use std::env;
 
 // openrouter/free
 // nvidia/nemotron-3-super-120b-a12b:free

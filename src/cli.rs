@@ -1,9 +1,8 @@
-use std::io::{ stdin, stdout, IsTerminal, Write };
-use crate::config::Config;
 use crate::error::NyxError;
-use crate::llm::call;
+use crate::llm::{Client, call};
+use std::io::{IsTerminal, Write, stdin, stdout};
 
-pub fn repl(config: &Config) -> Result<(), NyxError> {
+pub fn repl(client: &Client) -> Result<(), NyxError> {
     let mut failed = false;
 
     print_terminal_prompt()?;
@@ -16,7 +15,7 @@ pub fn repl(config: &Config) -> Result<(), NyxError> {
             "" => {}
             "exit" => break,
             _ => {
-                if let Err(e) = ask(line, config) {
+                if let Err(e) = ask(client, line) {
                     eprintln!("error: {e}");
                     failed = true;
                 }
@@ -32,9 +31,9 @@ pub fn repl(config: &Config) -> Result<(), NyxError> {
     }
 }
 
-pub fn ask(prompt: &str, config: &Config) -> Result<(), NyxError> {
-    let response = call(prompt, config)?;
-    println!("{}", response);
+pub fn ask(client: &Client, prompt: &str) -> Result<(), NyxError> {
+    let response = call(client, prompt)?;
+    println!("{}", response.content);
     Ok(())
 }
 
