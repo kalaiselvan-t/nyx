@@ -1,6 +1,18 @@
 use crate::error::NyxError;
 use crate::llm::{Client, call};
+use clap::Parser;
 use std::io::{IsTerminal, Write, stdin, stdout};
+
+#[derive(Parser)]
+#[command(name = "nyx", about = "A Linux command line assistant")]
+pub struct Args {
+    /// Profile to load from ~/.config/nyx/profiles/<name>.toml
+    #[arg(long, default_value = "default")]
+    pub profile: String,
+
+    /// Prompt; starts the REPL if omitted
+    pub prompt: Option<String>,
+}
 
 pub fn repl(client: &Client) -> Result<(), NyxError> {
     let mut failed = false;

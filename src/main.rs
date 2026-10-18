@@ -3,13 +3,13 @@ mod config;
 mod error;
 mod llm;
 
-use std::env;
 use std::process::ExitCode;
 
-use crate::cli::{ask, repl};
+use crate::cli::{Args, ask, repl};
 use crate::config::Config;
 use crate::error::NyxError;
 use crate::llm::Client;
+use clap::Parser;
 
 fn main() -> ExitCode {
     match run() {
@@ -22,10 +22,11 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), NyxError> {
-    let config = Config::from_env()?;
-    let client= Client::new(&config);
+    let args = Args::parse();
+    let config = Config::load(&args.profile)?;
+    let client = Client::new(&config);
 
-    match env::args().nth(1) {
+    match args.prompt {
         Some(prompt) => ask(&client, &prompt),
         None => repl(&client),
     }
