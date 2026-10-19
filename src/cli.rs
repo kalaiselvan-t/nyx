@@ -1,5 +1,6 @@
+use crate::conversation::Conversation;
 use crate::error::NyxError;
-use crate::llm::{Client, call};
+use crate::llm::Client;
 use clap::Parser;
 use std::io::{IsTerminal, Write, stdin, stdout};
 
@@ -15,6 +16,7 @@ pub struct Args {
 }
 
 pub fn repl(client: &Client) -> Result<(), NyxError> {
+    let mut conversation = Conversation::new();
     let mut failed = false;
 
     print_terminal_prompt()?;
@@ -26,12 +28,14 @@ pub fn repl(client: &Client) -> Result<(), NyxError> {
         match line {
             "" => {}
             "exit" => break,
-            _ => {
-                if let Err(e) = ask(client, line) {
+            "reset" => conversation.reset(),
+            _ => match conversation.send(client, line) {
+                Ok(msg) => println!("{}", msg.content),
+                Err(e) => {
                     eprintln!("error: {e}");
                     failed = true;
                 }
-            }
+            },
         }
         print_terminal_prompt()?;
     }
@@ -44,8 +48,9 @@ pub fn repl(client: &Client) -> Result<(), NyxError> {
 }
 
 pub fn ask(client: &Client, prompt: &str) -> Result<(), NyxError> {
-    let response = call(client, prompt)?;
-    println!("{}", response.content);
+    let mut conversation = Conversation::new();
+    let reply = conversation.send(client, prompt)?;
+    println!("{}", reply.content);
     Ok(())
 }
 

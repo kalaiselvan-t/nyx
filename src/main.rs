@@ -1,5 +1,6 @@
 mod cli;
 mod config;
+mod conversation;
 mod error;
 mod llm;
 

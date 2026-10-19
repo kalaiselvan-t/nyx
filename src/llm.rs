@@ -75,24 +75,3 @@ impl Client {
             .ok_or_else(|| NyxError::BadResponse("Response had no choices".to_string()))
     }
 }
-
-pub fn call(client: &Client, prompt: &str) -> Result<Message, NyxError> {
-    const SYSTEM_PROMPT: &str = "You are nyx, a Linux command line assistant. You answer like terminal output - concise and precise. \
-     Your output is printed raw in a terminal and may be piped to other programs. \
-     Rules: \
-        - Plain text only. No markdown: no code fences, no **bold**, no headings, no emoji. \
-        - No ASCII art, banners or decoration. \
-     ";
-
-    let system_message = Message {
-        role: Role::System,
-        content: SYSTEM_PROMPT.to_string(),
-    };
-
-    let user_message = Message {
-        role: Role::User,
-        content: prompt.to_string(),
-    };
-
-    client.chat(&[system_message, user_message])
-}
