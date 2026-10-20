@@ -1,15 +1,9 @@
-mod cli;
-mod config;
-mod conversation;
-mod error;
-mod llm;
+use nyx::cli::{Args, ask, repl};
+use nyx::config::Config;
+use nyx::error::NyxError;
+use nyx::llm::Client;
 
 use std::process::ExitCode;
-
-use crate::cli::{Args, ask, repl};
-use crate::config::Config;
-use crate::error::NyxError;
-use crate::llm::Client;
 use clap::Parser;
 
 fn main() -> ExitCode {
